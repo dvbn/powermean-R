@@ -3,10 +3,10 @@
 // src/powermean/_native/iols/bind.cpp
 // SHA-256 7d12b4308bbff9f4ee6f3dc3f72f77c06874462c7e762d6bc7c8ad707060e4e5.
 
+#include "binary_round.h"
 #include "k4_core.h"
 #include <Eigen/Cholesky>
 #include <Eigen/Eigenvalues>
-#include <boost/multiprecision/cpp_int.hpp>
 
 namespace powermean::k4 {
 
@@ -210,7 +210,7 @@ bool exact_dyadic_full_rank(const Eigen::MatrixXd& z) {
     for (Eigen::Index i = 0; i < z.rows(); ++i) {
         std::vector<cpp_rational> row;
         row.reserve(p);
-        for (Eigen::Index j = 0; j < p; ++j) row.emplace_back(z(i, j));
+        for (Eigen::Index j = 0; j < p; ++j) row.emplace_back(dyadic(z(i, j)));
         for (const auto& previous : basis) {
             const cpp_rational multiplier = row[previous.first];
             if (multiplier == 0) continue;

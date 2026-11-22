@@ -4,3 +4,4 @@
 - Includes Jochmans GMM1 and GMM2 for rectangular layouts and directed dyads, with cell-projection inference.
 - Adds retained-row prediction, fixed-effect recovery, equation-scale residuals, proportional effects, and reporting tables.
 - Includes BBP and Weidner–Zylkin adjustments and the getting-started and gravity vignettes.
+- Reuses exact integer-based binary64 conversion in the IOLS rank fallback to avoid a Boost conversion warning on GCC 15.

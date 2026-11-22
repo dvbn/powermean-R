@@ -5,9 +5,25 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 
 namespace powermean {
+
+// Convert a finite binary64 value through its integer significand and exponent.
+inline boost::multiprecision::cpp_rational dyadic(double value) {
+    using boost::multiprecision::cpp_int;
+    using boost::multiprecision::cpp_rational;
+    if (value == 0) return 0;
+    constexpr int digits = std::numeric_limits<double>::digits;
+    int exponent = 0;
+    const auto fraction = std::frexp(value, &exponent);
+    cpp_rational exact(static_cast<std::int64_t>(std::ldexp(fraction, digits)));
+    if (exponent >= digits) {
+        return exact * (cpp_int(1) << (exponent - digits));
+    }
+    return exact / (cpp_int(1) << (digits - exponent));
+}
 
 inline double nearest_binary64(const boost::multiprecision::cpp_rational& ratio) {
     using boost::multiprecision::cpp_int;

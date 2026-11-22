@@ -1,8 +1,6 @@
 // Exact binary-rational fallbacks for coefficient targets and restriction tests.
 #define R_NO_REMAP
 
-#include <boost/multiprecision/cpp_int.hpp>
-
 #include <R.h>
 #include <Rinternals.h>
 
@@ -17,20 +15,8 @@
 
 namespace {
 
-using boost::multiprecision::cpp_int;
 using boost::multiprecision::cpp_rational;
-
-cpp_rational dyadic(double value) {
-    if (value == 0) return 0;
-    constexpr int digits = std::numeric_limits<double>::digits;
-    int exponent = 0;
-    const auto fraction = std::frexp(value, &exponent);
-    cpp_rational exact(static_cast<std::int64_t>(std::ldexp(fraction, digits)));
-    if (exponent >= digits) {
-        return exact * (cpp_int(1) << (exponent - digits));
-    }
-    return exact / (cpp_int(1) << (digits - exponent));
-}
+using powermean::dyadic;
 
 double slope_scale(double value, double unit, double order, bool report) {
     if (std::isnan(value)) return value;
