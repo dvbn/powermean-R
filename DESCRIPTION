@@ -1,0 +1,22 @@
+Package: powermean
+Type: Package
+Title: Power-Mean Regression with Fixed Effects
+Version: 0.0.0.9000
+Authors@R: person("David", "Benatia", email = "dbenatia@gmail.com",
+                  role = c("aut", "cre", "cph"))
+Description: Estimates conditional power means with and without fixed
+    effects. Provides inference for Poisson and Gamma pseudo-maximum
+    likelihood, log least squares and other admitted power means.
+    Implements Jochmans difference-moment estimators for complete rectangular
+    arrays and directed dyads. Includes prediction, proportional contrasts,
+    and clustered and heteroskedasticity-consistent covariance estimators.
+License: BSD_3_clause + file LICENSE
+URL: https://github.com/dvbn/powermean-R
+BugReports: https://github.com/dvbn/powermean-R/issues
+Encoding: UTF-8
+SystemRequirements: C++17
+Imports: highs, Matrix, methods, stats, utils
+LinkingTo: BH, RcppEigen
+Suggests: fixest, haven, jsonlite, knitr, rmarkdown
+VignetteBuilder: knitr
+NeedsCompilation: yes

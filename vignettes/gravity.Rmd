@@ -1,0 +1,106 @@
+---
+title: "Three-Way Gravity with Powermean"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Three-Way Gravity with Powermean}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", error = FALSE)
+```
+
+In a three-way gravity model, exporter-year and importer-year fixed
+effects account for country-specific conditions in each year. Directed
+pair fixed effects absorb time-invariant differences between trade
+partners. The agreement coefficient uses changes within pairs after
+accounting for both country-year effects.
+
+## Simulate trade across pairs and years
+
+Each directed pair is observed in all eight years. Some pairs adopt an
+agreement during the sample. The first two pairs have no trade in any year.
+
+```{r simulate}
+library(powermean)
+set.seed(417)
+
+trade <- expand.grid(exporter = seq_len(12L), importer = seq_len(12L),
+                     year = seq_len(8L))
+trade <- trade[trade$exporter != trade$importer, ]
+trade$pair <- interaction(trade$exporter, trade$importer, drop = TRUE)
+adoption <- sample(2:12, nlevels(trade$pair), replace = TRUE)
+trade$agreement <- as.integer(trade$year >= adoption[as.integer(trade$pair)])
+
+log_mean <- 1.5 + 0.4 * trade$agreement +
+    sin(trade$exporter * trade$year) / 5 + cos(trade$importer * trade$year) / 5
+trade$value <- rpois(nrow(trade), exp(log_mean))
+trade$value[as.integer(trade$pair) <= 2L] <- 0
+```
+
+## Fit PPML and check the sample
+
+`ppml()` targets the arithmetic mean with Poisson working variance.
+The caret combines identifiers within a fixed-effect block. The pair is
+a separate block and supplies the covariance clusters.
+
+```{r joint}
+formula <- value ~ 0 + agreement | pair + exporter^year + importer^year
+joint <- ppml(formula, trade, cluster = ~pair)
+tidy(joint)
+
+c(input = joint$sample$input_n, retained = joint$sample$nobs)
+table(joint$sample$reason, useNA = "ifany")
+```
+
+The all-zero pairs are separated from the finite PPML fit. An individual
+zero can remain in estimation when its pair trades in other years.
+`joint$sample$positions` gives the one-based input row numbers to use
+when aligning fitted means with the trade data.
+
+## Cancel the pair effects
+
+Cancelling pair effects eliminates the pair scale from the slope
+equation. With `tau = 1`, the cancelled and joint PPML slopes agree on
+the same retained sample. With `tau = 2`, cancellation uses Gamma working
+variance and the slope equation changes. Both calls still target the
+arithmetic mean.
+
+```{r cancellation}
+cancelled_ppml <- fit(formula, trade, cancel = "pair", tau = 1)
+cancelled_gamma <- fit(formula, trade, cancel = "pair", tau = 2)
+
+c(joint = unname(coef(joint)), cancelled = unname(coef(cancelled_ppml)))
+etable(joint, cancelled_gamma, names = c("Joint PPML", "Cancelled Gamma"))
+head(fixef(cancelled_gamma)$pair)
+head(cbind(fitted = predict(cancelled_gamma), residual = residuals(cancelled_gamma)))
+```
+
+For the cancelled fit, `fixef()` includes recovered pair effects.
+`predict()` recovers fitted means on the retained rows.
+`residuals()` subtracts those means from the retained observations
+here because the mean order is one. For replacement covariates,
+preserve the retained row labels and order and keep the pair and
+country-year identifiers fixed.
+
+## Compare the bias adjustments
+
+Request the short-group BBP coefficient correction on the cancelled fit.
+For eligible three-way PPML panels, request the Weidner--Zylkin (WZ)
+coefficient and pair covariance adjustments on the joint fit. The
+correction columns from `tidy()` show the uncorrected point and the
+estimated bias alongside the reported coefficient.
+
+```{r adjustments}
+bbp <- fit(formula, trade, cancel = "pair", tau = 2, bias_correction = TRUE)
+wz <- ppml(formula, trade, bias_correction = "wz",
+           vcov = list(cluster = "pair", adjustment = "wz"))
+
+tidy(bbp)
+tidy(wz)
+```
+
+BBP predictions use the corrected reporting point. The BBP covariance
+uses the uncorrected point. WZ predictions use the original estimating
+root, and the requested covariance applies its separate pair adjustment.

@@ -1,0 +1,164 @@
+---
+title: "Getting Started with Powermean"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with Powermean}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", error = FALSE)
+```
+
+Powermean estimates conditional power means of nonnegative outcomes. The
+mean order `omega` defines the estimand. At order one the target is the
+arithmetic mean, and at order zero it is the geometric mean. The working
+variance order `tau` defines the estimating equation at nonzero mean orders.
+
+## 1. Fit ordinary power means
+
+The example uses a binary regressor and a continuous control. The
+linear index is a log conditional mean. Frequencies of zero outcomes
+matter when choosing the estimation sample.
+
+```{r ordinary}
+library(powermean)
+set.seed(20261120)
+
+n <- 800L
+data <- data.frame(treated = rbinom(n, 1, 0.4), control = rnorm(n))
+data$outcome <- rpois(n, exp(0.5 + 0.35 * data$treated + 0.2 * data$control))
+
+arithmetic <- ppml(outcome ~ treated + control, data)
+geometric <- logols(outcome ~ treated + control, data, positive_only = TRUE)
+tidy(arithmetic)
+effect(arithmetic, "treated")
+```
+
+The exponentiated treated coefficient minus one gives the proportional
+change in the arithmetic mean when treatment changes from zero to one,
+holding the other regressors fixed. The geometric fit conditions on positive
+outcomes here. Its sample record gives the input rows used for estimation.
+
+## 2. Prepare rows and reuse the design
+
+Prepare data once when fitting alternative admitted equations to the
+same formula. The fit applies its mean-order domain and records exclusions
+on the original input-row scale.
+
+```{r prepared}
+prepared <- prepare(outcome ~ treated + control, data)
+half_order <- fit(prepared, omega = 0.5, tau = 1.5, vcov = "HC3")
+c(n_arithmetic = arithmetic$sample$nobs, n_half_order = half_order$sample$nobs)
+head(predict(half_order))
+se(half_order)
+```
+
+## 3. Estimate a three-way gravity model
+
+The panel has exporter-year, importer-year and directed pair fixed
+effects. An agreement takes effect on different dates for different
+pairs. Keep the pair classification separate from the two date
+interactions.
+
+```{r gravity}
+gravity <- expand.grid(exporter = seq_len(12L), importer = seq_len(12L),
+                       year = seq_len(8L))
+gravity <- gravity[gravity$exporter != gravity$importer, ]
+gravity$pair <- interaction(gravity$exporter, gravity$importer, drop = TRUE)
+adoption <- sample(2:12, nlevels(gravity$pair), replace = TRUE)
+gravity$agreement <- as.integer(gravity$year >= adoption[as.integer(gravity$pair)])
+gravity$trade <- rpois(nrow(gravity), exp(1.5 + 0.4 * gravity$agreement +
+    sin(gravity$exporter * gravity$year) / 5 + cos(gravity$importer * gravity$year) / 5))
+
+formula <- trade ~ 0 + agreement | pair + exporter^year + importer^year
+joint <- ppml(formula, gravity, cluster = ~pair)
+cancelled <- fit(formula, gravity, cancel = "pair", tau = 1)
+etable(joint, cancelled, names = c("Joint PPML", "Pair-cancelled PPML"))
+```
+
+At PPML weighting, pair cancellation gives the profiled joint slope
+equation on the common sample. Cancelling at another working variance
+changes the equation. Use `fixef()` to inspect normalized retained
+effects and recovered group scales. Both models return fitted means
+and response residuals on the retained rows.
+
+For a fixed-effect counterfactual, keep the original retained row
+labels and supply replacement covariates in fitting order.
+`predict()` holds offsets and recovered fixed effects fixed.
+
+```{r gravity-prediction}
+retained <- gravity[cancelled$sample$positions, , drop = FALSE]
+with_agreement <- transform(retained, agreement = 1L)
+head(cbind(fitted = predict(cancelled),
+           with_agreement = predict(cancelled, with_agreement),
+           residual = residuals(cancelled)))
+```
+
+See the Three-Way Gravity with Powermean vignette for sample accounting
+and the bias adjustments.
+
+## 4. Difference out two fixed effects with Jochmans GMM
+
+Jochmans GMM estimates an exogenous exponential mean with two
+fixed-effect blocks. Use a complete rectangular panel with one row per
+cell, two simple identifier columns and at least two levels per block.
+Observed zero outcomes remain in the array. A two-by-two panel has
+only one rectangle and cannot supply usable covariance.
+
+```{r gmm-rectangular}
+panel <- expand.grid(origin = 1:5, destination = 1:6)
+cell <- seq_len(nrow(panel))
+panel$agreement <- sin(cell)
+panel$trade <- exp(0.2 * panel$agreement + panel$origin / 8 -
+    panel$destination / 9) * (1 + 0.15 * cos(1.3 * cell))
+
+two_way <- trade ~ 0 + agreement | origin + destination
+gmm1 <- fit(two_way, panel, estimator = "gmm1")
+gmm2 <- fit(two_way, panel, estimator = "gmm2", start = coef(gmm1))
+etable(gmm1, gmm2, uncertainty = "ci")
+```
+
+GMM1 and GMM2 use different moment equations. GMM1 can supply a
+starting value for GMM2 in the same coefficient order. Both report a
+certified local solution with cell-projection covariance and normal
+intervals. Conditional on the full regressor array and fixed effects,
+the moments require unit means and unit expected products for the
+multiplicative errors at opposite cells of each rectangle. The reported
+inference assumes conditional independence of observed cells and
+growth in both dimensions.
+
+For a directed cross-section, supply every ordered non-self link
+among at least four agents and use the same labels in both identifier
+columns. Select `fe_layout = "directed"`.
+
+```{r gmm-directed}
+dyads <- expand.grid(origin = 1:6, destination = 1:6)
+dyads <- dyads[dyads$origin != dyads$destination, ]
+cell <- seq_len(nrow(dyads))
+dyads$agreement <- sin(cell)
+dyads$trade <- exp(0.2 * dyads$agreement + dyads$origin / 8 -
+    dyads$destination / 9) * (1 + 0.15 * cos(1.3 * cell))
+
+directed <- fit(two_way, dyads, estimator = "gmm2", fe_layout = "directed")
+stata <- with_vcov(directed, "stata")
+cbind(paper = se(directed), stata = se(stata))
+head(cbind(fitted = predict(directed), residual = residuals(directed)))
+```
+
+The paper covariance is the default. The Stata view applies
+`(n - 1) / n` to the directed covariance for `n` agents and leaves the
+slopes at the fitted point. Prediction recovers the two sets of fixed
+effects with the GMM slopes held fixed. Use `fixef()` to inspect them.
+
+## 5. Retain inference for another covariance request
+
+Use a covariance view to change the requested inference while keeping
+the estimated point. Save the result if the same retained rows and
+influences are needed in a later R session.
+
+```{r retained}
+alternative <- with_vcov(arithmetic, "HC3")
+cbind(default = se(arithmetic), HC3 = se(alternative))
+```
