@@ -1,49 +1,50 @@
-# Powermean for R <img src="docs/assets/powermean-logo.png" align="right" width="120" alt="Powermean logo" />
+# Powermean <img src="docs/assets/powermean-logo.png" align="right" width="120" alt="Powermean logo" />
 
-[![R package checks](https://github.com/dvbn/powermean-R/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/dvbn/powermean-R/actions/workflows/R-CMD-check.yaml)
+**Powermean is an R package for fitting power-mean regressions and estimating proportional effects.** It implements the framework of Benatia et al. (2026), *Dealing with Logs and Zeros in Regression Models*, including exponential conditional-mean models and log-linear regressions. With `fit()`, choose the conditional mean and the working variance separately, model outcomes in levels with observed zeros, and report proportional effects with confidence intervals. [Paper](https://arxiv.org/abs/2203.11820v4)
 
-**Powermean fits conditional power-mean regressions and estimates proportional effects.** Choose the mean order and working variance separately, fit models in levels with observed zeros, and report proportional effects with confidence intervals. This is the native R companion to [Powermean for Python](https://github.com/dvbn/powermean). Both implement the framework of Benatia, Bellégo and Pape, *Dealing with Logs and Zeros in Regression Models*. [Paper](https://arxiv.org/abs/2203.11820v4)
+Estimate multiple high-dimensional fixed-effect blocks jointly, or cancel a selected block while retaining the others. Powermean provides bias corrections that address the incidental-parameters problem in short panels and three-way gravity models. The same formula interface takes you from a simple conditional-mean regression to three-way gravity and nonlinear difference-in-differences.
 
-[Installation](docs/install.md) · [User guide](docs/README.md) · [Function index](docs/README.md#function-index) · [Validation](docs/validation.md)
+[Install Powermean](docs/install.md) · [User guide](docs/README.md) · [Function index](docs/README.md#function-index)
 
-## Install
-
-Install the development package from GitHub.
+Install the development version of Powermean for R from GitHub.
 
 ```r
 install.packages("remotes")
 remotes::install_github("dvbn/powermean-R")
 ```
 
-Powermean builds native C++ code. The [installation guide](docs/install.md) lists platform build tools and explains how to install the two vignettes.
-
-## Fit a conditional mean
+**Conditional mean.** Suppose `x` is strictly exogenous and `E[y | x] = exp(a + b*x)`. With a data frame named `data` containing `y` and `x`, fit the arithmetic conditional mean by Poisson pseudo-maximum likelihood (PPML).
 
 ```r
 library(powermean)
-set.seed(20261120)
 
-n <- 800L
-data <- data.frame(treated = rbinom(n, 1, 0.4), control = rnorm(n))
-data$outcome <- rpois(n, exp(0.5 + 0.35 * data$treated + 0.2 * data$control))
-
-model <- fit(outcome ~ treated + control, data, omega = 1, tau = 1)
-tidy(model)
-effect(model, "treated")
+model <- fit(y ~ x, data, omega = 1, tau = 1)
 ```
 
-This fits the arithmetic conditional mean with Poisson pseudo-maximum likelihood. Keep `omega = 1` and set `tau = 2` for Gamma PML targeting the same mean. Use `logols()` for a geometric-mean model and check the treatment of zero outcomes before comparing fits.
+Read the coefficient on `x` and its interval in `tidy(model)`. Keep `omega = 1` and set `tau = 1.5` or `tau = 2` (Gamma PML) to change the working variance for the same mean. A runnable example shows how to report the fitted percentage change. [One conditional mean, three working variances](docs/examples.md#one-conditional-mean-three-working-variances)
 
-- **Three-way gravity.** Fit trade with pair, exporter-year and importer-year effects. Estimate the blocks jointly or cancel the pair effects, then recover them for prediction. The gravity vignette covers clustered inference, sample exclusions, and the BBP and Weidner–Zylkin corrections. [Gravity walkthrough](vignettes/gravity.Rmd)
-- **Two-way exponential regression.** In `fit()`, select `estimator = "gmm1"` or `"gmm2"` for Jochmans difference moments on complete rectangular panels or directed non-self dyads. [Jochmans examples](vignettes/powermean.Rmd#4-difference-out-two-fixed-effects-with-jochmans-gmm)
-- **Reuse a design.** Use `prepare()` to fit alternative admitted equations on a prepared design. Use `etable()` to compare models and their uncertainty. [Getting started](vignettes/powermean.Rmd)
+**Gravity.** How does bilateral trade differ when a pair has an agreement? Fit trade in levels and choose fixed effects and inference suited to your panel. [Gravity walkthrough](vignettes/gravity.Rmd)
+
+**Nonlinear difference-in-differences.** How do expected visits change after policy adoption? Use `fit()` for common or staggered adoption under multiplicative parallel trends, then read the effects by cohort and date with unit-clustered intervals. [DiD walkthrough](docs/examples.md#nonlinear-difference-in-differences)
 
 ## Work with the results
 
-Use `coef()`, `vcov()`, `confint()`, and `tidy()` for estimates and inference. Check `model$sample$positions` for the one-based retained input rows. Use `predict()` for fitted means, `residuals()` for response residuals on the equation scale, and `fixef()` for normalized and recovered fixed effects. For supported fixed-effect counterfactuals, pass replacement covariates on the retained rows in fitting order. [Function index](docs/README.md#function-index)
+Before comparing coefficients, check which rows each model used. Each result records their input positions and the reasons for exclusions. [Compare estimation samples](docs/examples.md#compare-estimation-samples)
 
-## Citation and license
+Use `etable()` to place several fitted models side by side. The result also supplies tests, proportional effects and alternative covariance estimates. [Reuse and export a fit](docs/examples.md#reuse-and-export-a-fit) · [Tables and formats](man/powermean_tables.Rd)
 
-Use `citation("powermean")` to cite the underlying methods. Cite Jochmans (2017) for GMM1 or GMM2 and Weidner and Zylkin (2021) for their three-way PPML corrections. [References](docs/README.md#references)
+Use `predict(model)` for fitted means, `residuals(model)` for response
+residuals, and `fixef(model)` to extract fixed effects. For a fixed-effect
+counterfactual, replace the covariates on the retained rows. [Worked prediction example](vignettes/powermean.Rmd#3-estimate-a-three-way-gravity-model)
 
-Powermean's source is licensed under [BSD-3-Clause](LICENSE.md). The carried native kernels retain their [exact-basis](inst/LICENSE.K3) and [IOLS](inst/LICENSE.K4) notices.
+## Documentation and citation
+
+- [User guide](docs/README.md) · [Function index](docs/README.md#function-index) · [Troubleshooting](docs/install.md#troubleshooting)
+- [Offline guides](docs/install.md#install-the-vignettes) · [Getting started source](vignettes/powermean.Rmd) · [Gravity source](vignettes/gravity.Rmd). Build the R vignettes and open the HTML guides with `vignette()`.
+- Cite Benatia et al. (2026) and record the exact package build with your analysis. Find citations for individual methods in the [papers and section map](https://github.com/dvbn/powermean/blob/main/docs/references.md).
+
+## License
+
+Powermean's own source is licensed under [BSD-3-Clause](LICENSE.md).
+Bundled components carry the [exact-basis notice](inst/LICENSE.K3)
+and [IOLS notice](inst/LICENSE.K4).

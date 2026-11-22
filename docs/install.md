@@ -43,3 +43,13 @@ the dependencies declared in `DESCRIPTION`, including vignette dependencies.
 R CMD build .
 R CMD check --no-manual powermean_0.0.0.9000.tar.gz
 ```
+
+## Troubleshooting
+
+If installation fails during compilation, check that your platform's R
+build tools match the R version you are running. If the vignettes are
+unavailable after installation, check `rmarkdown::pandoc_available()`
+and reinstall with `build_vignettes = TRUE`.
+
+For fit errors and exclusions, see the [fit help](../man/fit.Rd) and
+[estimation sample example](examples.md#compare-estimation-samples).

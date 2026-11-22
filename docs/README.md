@@ -5,6 +5,7 @@ Powermean estimates conditional power means of nonnegative outcomes. The mean or
 - [Install the R package](install.md)
 - [Getting started](../vignettes/powermean.Rmd) covers ordinary fits, prepared designs, retained-row prediction and Jochmans GMM.
 - [Three-way gravity](../vignettes/gravity.Rmd) covers fixed-effect notation, sample retention, cancellation and bias correction.
+- [Worked examples](examples.md) cover working variances, nonlinear difference-in-differences, sample comparisons and table export.
 - [Validation](validation.md) records the Python reference version, cross-language checks and numerical exceptions.
 - [Python methods guide](https://github.com/dvbn/powermean/tree/main/docs) describes the shared statistical framework. Use the R function index below for argument names and supported combinations.
 
