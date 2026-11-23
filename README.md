@@ -1,50 +1,59 @@
-# Powermean <img src="docs/assets/powermean-logo.png" align="right" width="120" alt="Powermean logo" />
+# Powermean for R <img src="docs/assets/powermean-logo.png" align="right" width="120" alt="Powermean logo" />
 
-**Powermean is an R package for fitting power-mean regressions and estimating proportional effects.** It implements the framework of Benatia et al. (2026), *Dealing with Logs and Zeros in Regression Models*, including exponential conditional-mean models and log-linear regressions. With `fit()`, choose the conditional mean and the working variance separately, model outcomes in levels with observed zeros, and report proportional effects with confidence intervals. [Paper](https://arxiv.org/abs/2203.11820v4)
+Powermean fits regressions for questions such as how much expected patenting differs between firms with and without an R&D subsidy. You can estimate a percentage change in the arithmetic mean while keeping firms that file no patents. The package also fits other conditional power means and log-linear models, with or without fixed effects. [Benatia, Bellégo and Pape (2026)](https://arxiv.org/abs/2203.11820v4)
 
-Estimate multiple high-dimensional fixed-effect blocks jointly, or cancel a selected block while retaining the others. Powermean provides bias corrections that address the incidental-parameters problem in short panels and three-way gravity models. The same formula interface takes you from a simple conditional-mean regression to three-way gravity and nonlinear difference-in-differences.
+[User guide](docs/README.md) · [Worked examples](docs/examples.md) · [Function index](docs/README.md#function-index) · [Powermean for Python](https://github.com/dvbn/powermean)
 
-[Install Powermean](docs/install.md) · [User guide](docs/README.md) · [Function index](docs/README.md#function-index)
+## Installation
 
-Install the development version of Powermean for R from GitHub.
+Install the development version from GitHub. Building from source requires R’s C++17 toolchain. [Installation and platform requirements](docs/install.md)
 
 ```r
-install.packages("remotes")
+if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
 remotes::install_github("dvbn/powermean-R")
 ```
 
-**Conditional mean.** Suppose `x` is strictly exogenous and `E[y | x] = exp(a + b*x)`. With a data frame named `data` containing `y` and `x`, fit the arithmetic conditional mean by Poisson pseudo-maximum likelihood (PPML).
+## A first fit
+
+Simulate patent counts for 2,000 firms. Compare firms of the same size with and without the subsidy using Poisson pseudo-maximum likelihood (PPML).
 
 ```r
 library(powermean)
+set.seed(2026)
 
-model <- fit(y ~ x, data, omega = 1, tau = 1)
+n <- 2000L
+firms <- data.frame(subsidy = rbinom(n, 1, 0.3), log_employment = rnorm(n))
+firms$patents <- rpois(n, exp(-0.5 + 0.3 * firms$subsidy +
+                                0.6 * firms$log_employment))
+
+model <- ppml(patents ~ subsidy + log_employment, firms)
+effect(model, "subsidy")
 ```
 
-Read the coefficient on `x` and its interval in `tidy(model)`. Keep `omega = 1` and set `tau = 1.5` or `tau = 2` (Gamma PML) to change the working variance for the same mean. A runnable example shows how to report the fitted percentage change. [One conditional mean, three working variances](docs/examples.md#one-conditional-mean-three-working-variances)
+The fitted mean is **31.0% higher** for subsidized firms at the same log employment (95% interval, 18.0% to 45.5%). All 1,033 firms with zero patents contribute. `effect()` reports proportions, so an estimate of 0.310 means a 31.0% increase.
 
-**Gravity.** How does bilateral trade differ when a pair has an agreement? Fit trade in levels and choose fixed effects and inference suited to your panel. [Gravity walkthrough](vignettes/gravity.Rmd)
+```r
+profiles <- data.frame(subsidy = c(0, 1), log_employment = 0)
+predict(model, profiles)
+#         1         2
+# 0.6205553 0.8130659
+```
 
-**Nonlinear difference-in-differences.** How do expected visits change after policy adoption? Use `fit()` for common or staggered adoption under multiplicative parallel trends, then read the effects by cohort and date with unit-clustered intervals. [DiD walkthrough](docs/examples.md#nonlinear-difference-in-differences)
+At these covariate values the model predicts 0.621 and 0.813 patents per firm. Use `residuals(model)` for observed minus fitted counts. With fixed effects, `fixef(model)` returns estimates by level. You can change covariates on the retained rows and predict while holding those effects fixed. [Predict trade for the same pairs](docs/get-started.md#predict-trade-for-the-same-pairs)
 
-## Work with the results
+## Where to go next
 
-Before comparing coefficients, check which rows each model used. Each result records their input positions and the reasons for exclusions. [Compare estimation samples](docs/examples.md#compare-estimation-samples)
+| If you want to… | Read |
+| --- | --- |
+| Choose between the arithmetic mean, another power mean, and log regression | [Choose the mean and compare samples](docs/get-started.md#1-fit-ordinary-power-means) |
+| Compare PPML and Gamma PML for the same mean | [One conditional mean, three working variances](docs/examples.md#one-conditional-mean-three-working-variances) |
+| Fit fixed effects, cancel one block, or correct bias in a gravity model | [Three-way gravity, with results](docs/gravity.md) |
+| Estimate effects by cohort and date | [Nonlinear difference-in-differences](docs/examples.md#nonlinear-difference-in-differences) |
+| Report confidence intervals or export a regression table | [Reuse and export a fit](docs/examples.md#reuse-and-export-a-fit) |
 
-Use `etable()` to place several fitted models side by side. The result also supplies tests, proportional effects and alternative covariance estimates. [Reuse and export a fit](docs/examples.md#reuse-and-export-a-fit) · [Tables and formats](man/powermean_tables.Rd)
+## Citation and license
 
-Use `predict(model)` for fitted means, `residuals(model)` for response
-residuals, and `fixef(model)` to extract fixed effects. For a fixed-effect
-counterfactual, replace the covariates on the retained rows. [Worked prediction example](vignettes/powermean.Rmd#3-estimate-a-three-way-gravity-model)
-
-## Documentation and citation
-
-- [User guide](docs/README.md) · [Function index](docs/README.md#function-index) · [Troubleshooting](docs/install.md#troubleshooting)
-- [Offline guides](docs/install.md#install-the-vignettes) · [Getting started source](vignettes/powermean.Rmd) · [Gravity source](vignettes/gravity.Rmd). Build the R vignettes and open the HTML guides with `vignette()`.
-- Cite Benatia et al. (2026) and record the exact package build with your analysis. Find citations for individual methods in the [papers and section map](https://github.com/dvbn/powermean/blob/main/docs/references.md).
-
-## License
+Use `citation("powermean")` for the method references and `packageVersion("powermean")` to record the build. The [user guide](docs/README.md#references) lists the papers behind specific methods.
 
 Powermean's own source is licensed under [BSD-3-Clause](LICENSE.md).
-Bundled components carry the [exact-basis notice](inst/LICENSE.K3)
-and [IOLS notice](inst/LICENSE.K4).
+Bundled components carry the [exact-basis notice](inst/LICENSE.K3) and [IOLS notice](inst/LICENSE.K4).

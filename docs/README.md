@@ -1,33 +1,43 @@
-# Powermean R user guide
+# Powermean for R user guide
 
-Powermean estimates conditional power means of nonnegative outcomes. The mean order `omega` defines the estimand. Order one targets the arithmetic mean, and order zero targets the geometric mean. The working variance order `tau` or a declared `NB2()` variance selects the estimating equation at nonzero mean orders.
+If this is your first fit, [install the package](install.md) and run the [patent example](../README.md#a-first-fit). It takes you from a data frame to a percentage change and two predictions. The walkthroughs below include the R code and its output.
 
-- [Install the R package](install.md)
-- [Getting started](../vignettes/powermean.Rmd) covers ordinary fits, prepared designs, retained-row prediction and Jochmans GMM.
-- [Three-way gravity](../vignettes/gravity.Rmd) covers fixed-effect notation, sample retention, cancellation and bias correction.
-- [Worked examples](examples.md) cover working variances, nonlinear difference-in-differences, sample comparisons and table export.
-- [Validation](validation.md) records the Python reference version, cross-language checks and numerical exceptions.
-- [Python methods guide](https://github.com/dvbn/powermean/tree/main/docs) describes the shared statistical framework. Use the R function index below for argument names and supported combinations.
+## Choose a model
+
+| What are you estimating? | Where to start |
+| --- | --- |
+| A percentage change in an outcome that can be zero | [Fit an arithmetic mean and interpret the treatment coefficient](get-started.md#1-fit-ordinary-power-means). The same example fits log OLS on the positive observations. |
+| The same arithmetic mean using different working variances | [Compare PPML, Gamma PML and an intermediate variance](examples.md#one-conditional-mean-three-working-variances). |
+| A trade agreement coefficient with pair and country-year fixed effects | [Fit three-way gravity and check which pairs contribute](gravity.md#fit-ppml-and-check-the-sample). Then [cancel pair effects](gravity.md#cancel-the-pair-effects) or [compare bias adjustments](gravity.md#compare-the-bias-adjustments). |
+| A slope on a complete panel or directed dyads with two fixed effects | [Check the extra assumption for GMM1 and GMM2](get-started.md#what-do-the-two-way-moments-assume), then fit a [complete panel](get-started.md#fit-a-complete-panel) or [directed pairs](get-started.md#fit-directed-pairs). |
+| A policy effect under multiplicative parallel trends | [Estimate effects by adoption cohort and period](examples.md#nonlinear-difference-in-differences) and convert them into visits per clinic. |
+
+## Work with a fit
+
+- **Which observations contributed?** `model$sample$positions` gives one-based row numbers in the original data. Use it when [comparing estimation samples](examples.md#compare-estimation-samples).
+- **What would the model predict at different covariate values?** [Predict for new observations](examples.md#predict-means-and-read-residuals) without fixed effects. With fixed effects, [change covariates on the same pairs](get-started.md#predict-trade-for-the-same-pairs). That example also shows observed minus fitted trade and the recovered effects.
+- **How do the standard errors change?** [Compare covariance estimates](get-started.md#5-compare-standard-errors) at the same coefficients.
+- **How do I report the result?** [Export model tables and save a fit](examples.md#reuse-and-export-a-fit). Use `effect()` for a proportional change and `etable(..., scale = "effect")` for a percentage.
 
 ## Function index
 
-| Task | R entry point | Help |
-| --- | --- | --- |
-| Fit power-mean models and prepare reusable designs | `fit()`, `prepare()`, `ppml()`, `gpml()`, `logols()` | [Fit and prepare](../man/fit.Rd) |
-| Select Jochmans moments or a working variance | `estimator()`, `power_variance()`, `NB2()` | [Estimators](../man/estimator.Rd), [working variance](../man/working_variance.Rd) |
-| Inspect estimates, the retained sample and convergence | `coef()`, `tidy()`, `summary()`, `model$sample`, `model$provenance` | [Results](../man/ppml_results.Rd), [provenance](../man/provenance.Rd) |
-| Predict and recover fixed effects | `predict()`, `fitted()`, `residuals()`, `fixef()` | [Results](../man/ppml_results.Rd), [fixed effects](../man/fixef.Rd) |
-| Request covariance or change a supported inference convention | `vcov()`, `with_vcov()`, `se()`, `confint()` | [Inference requests](../man/inference_requests.Rd), [small-sample corrections](../man/ssc.Rd) |
-| Report effects, contrasts and hypothesis tests | `effect()`, `effects()`, `contrast()`, `lincom()`, `nlcom()`, `wald()` | [Targets and tests](../man/powermean_targets.Rd) |
-| Compare models and export tables | `etable()`, `balance_table()`, `outcome_table()`, `as_markdown()`, `as_html()`, `as_latex()` | [Tables](../man/powermean_tables.Rd) |
-| Configure the solver and sample | `solver_options()`, `absorbed_options()`, `iols_options()`, `sample_request()` | [Newton](../man/solver_defaults.Rd), [absorption](../man/absorbed_options.Rd), [IOLS](../man/iols_options.Rd), [sample](../man/sample_request.Rd) |
+Type `help(package = "powermean")` for the full list. The help commands below work in an R session with the package installed.
 
-The installed R help is available through `help(package = "powermean")`.
-R uses formulas such as `trade ~ 0 + agreement | pair + exporter^year + importer^year`.
-Pass a fitted object to R generics, for example `predict(model)` and `vcov(model)`.
+| Task | R functions | Help |
+| --- | --- | --- |
+| Fit a formula or reuse a prepared design | `fit()`, `ppml()`, `gpml()`, `logols()`, `prepare()` | `?powermean::fit` |
+| Set a working variance | `power_variance()`, `NB2()` | `?powermean::NB2` |
+| Read coefficients, intervals, and the estimation sample | `coef()`, `confint()`, `tidy()`, `summary()`, `model$sample` | `?powermean::tidy` |
+| Predict and recover fixed effects | `predict()`, `fitted()`, `residuals()`, `fixef()` | `?powermean::fixef`, `help("predict.powermean_fit", package = "powermean")` |
+| Choose or change covariance | `vcov()`, `with_vcov()`, `se()`, `ssc()` | `?powermean::with_vcov`, `?powermean::ssc` |
+| Report a proportional change or test a restriction | `effect()`, `contrast()`, `lincom()`, `nlcom()`, `wald()` | `?powermean::effect`, `?powermean::contrast` |
+| Compare models and export tables | `etable()`, `as_markdown()`, `as_html()`, `as_latex()` | `?powermean::etable` |
+| Configure a solver or inspect exclusions | `solver_options()`, `iols_options()`, `sample_request()` | `?powermean::solver_options`, `?powermean::sample_request` |
+
+Use `powermean::etable()` and `powermean::fixef()` in scripts that also attach `fixest`. For source installation problems, see [troubleshooting](install.md#troubleshooting). For checks against the Python implementation, see [cross-language validation](validation.md).
 
 ## References
 
-- Benatia, David, Christophe Bellégo, and Louis-Daniel Pape (2026). *Dealing with Logs and Zeros in Regression Models*. [Paper](https://arxiv.org/abs/2203.11820v4)
-- Jochmans, Koen (2017). *Two-Way Models for Gravity*. The Review of Economics and Statistics 99(3), 478–485. [Article](https://doi.org/10.1162/REST_a_00620)
-- Weidner, Martin, and Thomas Zylkin (2021). *Bias and consistency in three-way gravity models*. Journal of International Economics 132, 103513. [Article](https://doi.org/10.1016/j.jinteco.2021.103513)
+- Benatia, Bellégo and Pape (2026) develop the power-mean regression framework. [Dealing with Logs and Zeros in Regression Models](https://arxiv.org/abs/2203.11820v4)
+- Jochmans (2017) derives the two-way difference moments. [Two-Way Models for Gravity](https://doi.org/10.1162/REST_a_00620)
+- Weidner and Zylkin (2021) derive coefficient and covariance adjustments for three-way gravity models. [Bias and Consistency in Three-Way Gravity Models](https://doi.org/10.1016/j.jinteco.2021.103513)

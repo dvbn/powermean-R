@@ -12,18 +12,24 @@ fixef(object, ...)
 \item{...}{Reserved for additional methods.}
 }
 \description{
-Recover the fixed-effect contributions to the fitted log-mean index using
-the sample's exact indicator basis. The largest block anchors each
-connected component. Ties follow formula order.
-For a Jochmans fit the effects balance observed outcome margins while
-holding the slopes fixed. The first supported column level anchors each
-component. Effects for levels outside the positive support are missing.
-For a cancelled fit, the eliminated block is recovered from the
-within-group mean of the observed response scaled by the fitted
-retained index. Metadata report group scales and flag missing effects.
-A group with no positive transformed outcome has scale zero and a
-missing log effect. Recovery uses the BBP reporting point or the
-original estimating point for WZ.
+Extract each fixed-effect block's contribution to the fitted log mean.
+The result has one table per block, with one row per level. You can also
+obtain these tables with \code{predict(object, type = "fixed_effects")}.
+}
+\details{
+For a joint fit, the largest block anchors each connected component of the
+sample. Ties follow formula order.
+
+For GMM1 and GMM2, Powermean holds the estimated slopes fixed and fits
+effects by PPML to match the observed row and column totals. The first
+supported column level anchors each component. Levels outside the positive
+support have a missing estimate.
+
+For a cancelled fit, Powermean recovers the eliminated block from the
+within-group mean of the response scaled by the retained index. A group
+with no positive transformed outcome has scale zero and a missing log
+effect. With a BBP correction the recovery uses the corrected slopes.
+With a WZ correction it uses the original slopes.
 }
 \value{
 A named list of data frames. Each data frame contains the original labels

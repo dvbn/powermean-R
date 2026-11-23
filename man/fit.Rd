@@ -9,8 +9,10 @@
 \alias{NB2}
 \title{Prepare and Fit a Power-Mean Regression}
 \description{
-Estimate conditional power means with a numeric slope design. Fixed-effect
-models absorb a set of classification variables in the point estimation.
+Estimate a conditional power mean with or without fixed effects.
+Use \code{ppml()} for an arithmetic mean with Poisson working variance,
+\code{gpml()} for the same mean with Gamma working variance and
+\code{logols()} for a geometric mean on positive outcomes.
 }
 \usage{
 fit(formula, data = NULL, ...)
@@ -198,10 +200,11 @@ the fitting sample. A tie requires an explicit block name.
 The omitted working-variance order is two for cancellation.
 With cancellation, \code{bias_correction = TRUE} selects short-group
 BBP correction and \code{bias_correction = "cell"} selects its cell
-form. Use \code{bias_correction = "wz"} for the Weidner--Zylkin
-coefficient correction on eligible three-way PPML panels.
+form. On eligible three-way PPML panels, \code{bias_correction = "wz"}
+applies the coefficient correction of Weidner and Zylkin (2021).
+See \doi{10.1016/j.jinteco.2021.103513}.
 For those panels, \code{vcov = list(cluster = "pair", adjustment = "wz")}
-requests the Weidner--Zylkin covariance adjustment. Use the declared pair
+requests the paper's pair covariance adjustment. Use the declared pair
 fixed-effect name for \code{cluster}. Its term may be a scalar identifier or an
 interaction of the two endpoints in either order. The other two fixed effects
 each interact one endpoint with a shared date. Origins and destinations must
@@ -216,8 +219,9 @@ the failure retains the checked recession witness. A dense fit exposes
 the witness in its certificate. A joint fixed-effect fit exposes it
 with the sample ledger in \code{provenance$failure$last_state}.}
 }
-\details{
-For exogenous two-way exponential regression, pass \code{estimator = "gmm1"}
+\section{GMM1 and GMM2 for two fixed effects}{
+Jochmans (2017) estimates exponential models by differencing out two sets
+of fixed effects. See \doi{10.1162/REST_a_00620}. Pass \code{estimator = "gmm1"}
 or \code{estimator = "gmm2"} to \code{fit()} with a formula such as
 \code{y ~ 0 + x1 + x2 | origin + destination}. Supply one row per cell,
 two simple identifier columns, finite regressors and nonnegative outcomes.
@@ -226,18 +230,26 @@ with at least two levels in each block. Use \code{fe_layout = "directed"}
 for every ordered non-self link among at least four common agents.
 Observed zeros remain in the sample.
 
-The two Jochmans estimators differ in their moment equations. Both report
-a certified local solution with observed-cell projection covariance and
-normal-reference inference. The \code{vcov = "paper"} convention is the
-default. \code{vcov = "stata"} applies the \eqn{(n-1)/n} multiplier for
+Write \eqn{U_{ij}=Y_{ij}/\mu_{ij}}, including both fixed effects in the
+mean \eqn{\mu_{ij}}. Condition on the full regressor array and the fixed
+effects. The mean model requires each \eqn{U_{ij}} to have mean one.
+The difference moment also uses equal expected products of the errors
+at opposite corners of a rectangle. The cell means alone do not imply this
+restriction. Jochmans (2017) obtains an expected product of one on each
+diagonal. Identification also requires covariate variation within rectangles.
+
+GMM1 and GMM2 weight the rectangle differences differently. The reported
+standard errors use cell projections and assume conditionally independent
+cell errors and growth in both dimensions. The default \code{vcov = "paper"}
+uses a normal reference distribution. \code{vcov = "stata"} applies the
+\eqn{(n-1)/n} multiplier for
 \eqn{n} directed agents, matching Stata's \code{twgravity} convention.
 Use \code{start} for a finite vector in slope order and \code{max_iter}
-to change the default budget of 100 accepted Newton updates. These
-estimators take a formula and data with the options above. The moments
-assume exogeneity with respect to the full regressor array and fixed
-effects. The covariance assumes conditionally independent observed
-cells and growing dimensions.
-
+to change the default budget of 100 accepted Newton updates. A successful
+fit certifies a local solution. See \code{vignette("powermean", package =
+"powermean")} for rectangular and directed examples.
+}
+\details{
 \code{prepare()} stores the covariance request and the sample used for
 later fits. A classification used for clustering during preparation
 contributes to complete-case selection. Replacing the covariance on a
@@ -249,7 +261,7 @@ interactions are available to later clustered fits.
 }
 \value{
 \code{prepare()} returns a \code{powermean_prepared} object. Refit it with
-another admitted equation or covariance request. Fit functions return a
+another mean order, working variance or covariance request. Fit functions return a
 \code{powermean_fit} object with named coefficients, covariance, fitted
 means, the sample record and a certificate. Original input row positions
 are one-based. In \code{fit$sample}, \code{table} gives ordered exclusion
@@ -313,13 +325,13 @@ The result summary includes the references for the fitted estimator.
 \examples{
 panel <- expand.grid(origin = 1:5, destination = 1:6)
 i <- seq_len(nrow(panel))
-panel$agreement <- sin(i)
-panel$trade <- exp(0.2 * panel$agreement + panel$origin / 8 -
+panel$log_cost <- sin(i)
+panel$trade <- exp(-0.2 * panel$log_cost + panel$origin / 8 -
     panel$destination / 9) * (1 + 0.15 * cos(1.3 * i))
 
-gmm1 <- fit(trade ~ 0 + agreement | origin + destination, panel,
+gmm1 <- fit(trade ~ 0 + log_cost | origin + destination, panel,
     estimator = "gmm1")
-gmm2 <- fit(trade ~ 0 + agreement | origin + destination, panel,
+gmm2 <- fit(trade ~ 0 + log_cost | origin + destination, panel,
     estimator = "gmm2", start = coef(gmm1))
 tidy(gmm2)
 head(predict(gmm2))
