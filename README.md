@@ -2,7 +2,7 @@
 
 Powermean fits regressions for questions such as how much expected patenting differs between firms with and without an R&D subsidy. You can estimate a percentage change in the arithmetic mean while keeping firms that file no patents. The package also fits other conditional power means and log-linear models, with or without fixed effects. [Benatia, Bellégo and Pape (2026)](https://arxiv.org/abs/2203.11820v4)
 
-[User guide](docs/README.md) · [Worked examples](docs/examples.md) · [Function index](docs/README.md#function-index) · [Powermean for Python](https://github.com/dvbn/powermean)
+[User guide](docs/README.md) · [Worked examples](docs/examples.md) · [Function reference](docs/reference.md) · [Powermean for Python](https://github.com/dvbn/powermean)
 
 ## Installation
 
@@ -47,9 +47,10 @@ At these covariate values the model predicts 0.621 and 0.813 patents per firm. U
 | --- | --- |
 | Choose between the arithmetic mean, another power mean, and log regression | [Choose the mean and compare samples](docs/get-started.md#1-fit-ordinary-power-means) |
 | Compare PPML and Gamma PML for the same mean | [One conditional mean, three working variances](docs/examples.md#one-conditional-mean-three-working-variances) |
+| Prepare a formula, describe your data, or compare covariate profiles | [Orders per shop and day](docs/data-and-results.md) |
+| Report confidence intervals or export a regression table | [Reuse and export a fit](docs/examples.md#reuse-and-export-a-fit) |
 | Fit fixed effects, cancel one block, or correct bias in a gravity model | [Three-way gravity, with results](docs/gravity.md) |
 | Estimate effects by cohort and date | [Nonlinear difference-in-differences](docs/examples.md#nonlinear-difference-in-differences) |
-| Report confidence intervals or export a regression table | [Reuse and export a fit](docs/examples.md#reuse-and-export-a-fit) |
 
 ## Citation and license
 

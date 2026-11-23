@@ -2,26 +2,35 @@
 
 If this is your first fit, [install the package](install.md) and run the [patent example](../README.md#a-first-fit). It takes you from a data frame to a percentage change and two predictions. The walkthroughs below include the R code and its output.
 
-## Choose a model
+## Start with an ordinary regression
 
-| What are you estimating? | Where to start |
+1. [Choose the mean and fit a model](get-started.md#1-fit-ordinary-power-means). Estimate a treatment coefficient with PPML or fit log OLS on positive outcomes.
+2. [Prepare your formula and sample](data-and-results.md#specify-the-rate-and-the-sample). Include an interaction, specify exposure or an offset, use observation weights where supported, and prepare one design for several fits.
+3. [Describe the data](data-and-results.md#describe-the-observations-you-actually-fitted). Summarize the outcome, check balance and compare group means on the retained rows.
+4. [Compare working variances](examples.md#one-conditional-mean-three-working-variances) at the same mean order, then [check which rows each fit used](examples.md#compare-estimation-samples) if you change orders.
+
+## Read and report results
+
+- [Predict for new observations and inspect residuals](examples.md#predict-means-and-read-residuals). Predictions at `omega = 1` are in outcome units.
+- [Interpret an interaction](data-and-results.md#interpret-an-interaction-at-a-stated-price). Compare two covariate profiles at the same price and exposure. Use [effects, contrasts and tests](reference.md#predictions-effects-and-tests) for other comparisons.
+- [Choose standard errors](reference.md#covariance-and-standard-errors) and [compare two covariance estimates](get-started.md#5-compare-standard-errors) for the same coefficients.
+- [Export a table or save a fit](examples.md#reuse-and-export-a-fit). `effect()` reports a proportion. `etable(..., scale = "effect")` displays a percentage.
+
+## Add fixed effects
+
+Write the groups after a vertical bar, as in `sales ~ price | firm + year`. [Choose joint estimation or cancel a block](reference.md#fixed-effects-and-panels). After fitting, [retrieve the effects by level and change covariates on the retained rows](get-started.md#predict-trade-for-the-same-pairs).
+
+## Panel designs and applications
+
+| Question | Worked analysis |
 | --- | --- |
-| A percentage change in an outcome that can be zero | [Fit an arithmetic mean and interpret the treatment coefficient](get-started.md#1-fit-ordinary-power-means). The same example fits log OLS on the positive observations. |
-| The same arithmetic mean using different working variances | [Compare PPML, Gamma PML and an intermediate variance](examples.md#one-conditional-mean-three-working-variances). |
-| A trade agreement coefficient with pair and country-year fixed effects | [Fit three-way gravity and check which pairs contribute](gravity.md#fit-ppml-and-check-the-sample). Then [cancel pair effects](gravity.md#cancel-the-pair-effects) or [compare bias adjustments](gravity.md#compare-the-bias-adjustments). |
-| A slope on a complete panel or directed dyads with two fixed effects | [Check the extra assumption for GMM1 and GMM2](get-started.md#what-do-the-two-way-moments-assume), then fit a [complete panel](get-started.md#fit-a-complete-panel) or [directed pairs](get-started.md#fit-directed-pairs). |
-| A policy effect under multiplicative parallel trends | [Estimate effects by adoption cohort and period](examples.md#nonlinear-difference-in-differences) and convert them into visits per clinic. |
-
-## Work with a fit
-
-- **Which observations contributed?** `model$sample$positions` gives one-based row numbers in the original data. Use it when [comparing estimation samples](examples.md#compare-estimation-samples).
-- **What would the model predict at different covariate values?** [Predict for new observations](examples.md#predict-means-and-read-residuals) without fixed effects. With fixed effects, [change covariates on the same pairs](get-started.md#predict-trade-for-the-same-pairs). That example also shows observed minus fitted trade and the recovered effects.
-- **How do the standard errors change?** [Compare covariance estimates](get-started.md#5-compare-standard-errors) at the same coefficients.
-- **How do I report the result?** [Export model tables and save a fit](examples.md#reuse-and-export-a-fit). Use `effect()` for a proportional change and `etable(..., scale = "effect")` for a percentage.
+| How did a policy change visits across adoption cohorts? | [Nonlinear difference-in-differences](examples.md#nonlinear-difference-in-differences), including effects by cohort and period and changes in visits per clinic. |
+| How does an agreement change expected trade? | [Three-way gravity](gravity.md), including separated pairs, cancellation and the coefficient and covariance adjustments of Weidner and Zylkin (2021). |
+| Can I difference out two fixed effects in a complete array? | [Assumptions for GMM1 and GMM2](get-started.md#what-do-the-two-way-moments-assume), followed by [a complete panel](get-started.md#fit-a-complete-panel) and [directed pairs](get-started.md#fit-directed-pairs). |
 
 ## Function index
 
-Type `help(package = "powermean")` for the full list. The help commands below work in an R session with the package installed.
+The [complete R function and option reference](reference.md) covers public functions, result methods, numerical controls and simulation tools. The calls below are the ones most analyses use. Type `help(package = "powermean")` for the installed help.
 
 | Task | R functions | Help |
 | --- | --- | --- |
@@ -31,6 +40,7 @@ Type `help(package = "powermean")` for the full list. The help commands below wo
 | Predict and recover fixed effects | `predict()`, `fitted()`, `residuals()`, `fixef()` | `?powermean::fixef`, `help("predict.powermean_fit", package = "powermean")` |
 | Choose or change covariance | `vcov()`, `with_vcov()`, `se()`, `ssc()` | `?powermean::with_vcov`, `?powermean::ssc` |
 | Report a proportional change or test a restriction | `effect()`, `contrast()`, `lincom()`, `nlcom()`, `wald()` | `?powermean::effect`, `?powermean::contrast` |
+| Describe data and check balance | `summary_statistics()`, `balance_table()`, `balance_regression()`, `outcome_table()` | `?powermean::summary_statistics` |
 | Compare models and export tables | `etable()`, `as_markdown()`, `as_html()`, `as_latex()` | `?powermean::etable` |
 | Configure a solver or inspect exclusions | `solver_options()`, `iols_options()`, `sample_request()` | `?powermean::solver_options`, `?powermean::sample_request` |
 
