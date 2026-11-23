@@ -1,6 +1,8 @@
 ---
 title: "Three-Way Gravity with Powermean"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Three-Way Gravity with Powermean}
   %\VignetteEngine{knitr::rmarkdown}
@@ -11,11 +13,11 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", error = FALSE)
 ```
 
-In a three-way gravity model, exporter-year and importer-year fixed
-effects account for country-specific conditions in each year. Directed
-pair fixed effects absorb time-invariant differences between trade
-partners. The agreement coefficient uses changes within pairs after
-accounting for both country-year effects.
+How much more do two countries trade after they enter an agreement?
+In this example, exporter-year and importer-year fixed effects account
+for country-specific conditions each year. Directed pair fixed effects
+control for persistent differences between trade partners. The agreement
+coefficient therefore uses changes within the same pair over time.
 
 ## Simulate trade across pairs and years
 
@@ -54,8 +56,9 @@ c(input = joint$sample$input_n, retained = joint$sample$nobs)
 table(joint$sample$reason, useNA = "ifany")
 ```
 
-The all-zero pairs are separated from the finite PPML fit. An individual
-zero can remain in estimation when its pair trades in other years.
+The two all-zero pairs account for the 16 excluded observations. The fit
+uses the other 1,040. An individual zero can remain in estimation when its
+pair trades in other years.
 `joint$sample$positions` gives the one-based input row numbers to use
 when aligning fitted means with the trade data.
 
@@ -77,20 +80,35 @@ head(fixef(cancelled_gamma)$pair)
 head(cbind(fitted = predict(cancelled_gamma), residual = residuals(cancelled_gamma)))
 ```
 
-For the cancelled fit, `fixef()` includes recovered pair effects.
-`predict()` recovers fitted means on the retained rows.
-`residuals()` subtracts those means from the retained observations
-here because the mean order is one. For replacement covariates,
-preserve the retained row labels and order and keep the pair and
-country-year identifiers fixed.
+Joint PPML and pair-cancelled PPML both give an agreement slope of 0.403.
+Holding pair and country-year effects fixed, an agreement corresponds to
+about 50% more expected trade, since `expm1(0.403)` is about 0.50. At mean
+order one the residual is observed trade minus its fitted arithmetic mean.
+For the cancelled fit, `fixef()` also returns the pair effects recovered
+after estimating the agreement slope.
+
+To predict trade without any agreements, replace the agreement variable
+on the rows the fit used. The two columns below use the same slopes,
+pair and country-year effects, and offsets.
+
+```{r counterfactual}
+retained <- trade[cancelled_gamma$sample$positions, , drop = FALSE]
+no_agreement <- transform(retained, agreement = 0L)
+comparison <- data.frame(agreement = retained$agreement,
+                         fitted = predict(cancelled_gamma),
+                         no_agreement = predict(cancelled_gamma, no_agreement))
+head(comparison[comparison$agreement == 1L, ])
+```
 
 ## Compare the bias adjustments
 
-Request the short-group BBP coefficient correction on the cancelled fit.
-For eligible three-way PPML panels, request the Weidner--Zylkin (WZ)
-coefficient and pair covariance adjustments on the joint fit. The
-correction columns from `tidy()` show the uncorrected point and the
-estimated bias alongside the reported coefficient.
+For the cancelled Gamma fit, `bias_correction = TRUE` applies the
+short-group correction of Benatia, Bellégo and Pape (2026). For joint PPML,
+Weidner and Zylkin (2021) derive a coefficient correction and a separate
+adjustment to the covariance clustered by pair. The example requests
+both adjustments for the same balanced panel.
+[Benatia et al. (2026), §5.2](https://arxiv.org/abs/2203.11820v4) ·
+[Weidner and Zylkin (2021), §§3.4.2–3.4.3](https://doi.org/10.1016/j.jinteco.2021.103513)
 
 ```{r adjustments}
 bbp <- fit(formula, trade, cancel = "pair", tau = 2, bias_correction = TRUE)
@@ -101,6 +119,8 @@ tidy(bbp)
 tidy(wz)
 ```
 
-BBP predictions use the corrected reporting point. The BBP covariance
-uses the uncorrected point. WZ predictions use the original estimating
-root, and the requested covariance applies its separate pair adjustment.
+`tidy()` reports the original estimate, estimated bias and corrected
+coefficient for each model. For `bbp`, predictions use the corrected
+slopes, and covariance uses the uncorrected slopes. For `wz`, predictions
+use the original PPML slopes. The `vcov` argument applies the separate
+pair adjustment to the standard errors.

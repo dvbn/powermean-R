@@ -1,6 +1,8 @@
 ---
 title: "Getting Started with Powermean"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Getting Started with Powermean}
   %\VignetteEngine{knitr::rmarkdown}
@@ -11,16 +13,17 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", error = FALSE)
 ```
 
-Powermean estimates conditional power means of nonnegative outcomes. The
-mean order `omega` defines the estimand. At order one the target is the
-arithmetic mean, and at order zero it is the geometric mean. The working
-variance order `tau` defines the estimating equation at nonzero mean orders.
+How does a change in treatment affect the average outcome? The first example
+answers this question for a sample that includes zeros. The trade examples
+then show how to hold fixed effects constant when making predictions, and
+when a two-way model can estimate slopes without fitting those effects.
 
 ## 1. Fit ordinary power means
 
-The example uses a binary regressor and a continuous control. The
-linear index is a log conditional mean. Frequencies of zero outcomes
-matter when choosing the estimation sample.
+Suppose treatment is binary and the outcome is a count. To compare treated
+and untreated observations at the same value of `control`, `ppml()` models
+the arithmetic mean, including zeros. For comparison, `logols()` models
+the geometric mean among observations with positive outcomes.
 
 ```{r ordinary}
 library(powermean)
@@ -36,16 +39,18 @@ tidy(arithmetic)
 effect(arithmetic, "treated")
 ```
 
-The exponentiated treated coefficient minus one gives the proportional
-change in the arithmetic mean when treatment changes from zero to one,
-holding the other regressors fixed. The geometric fit conditions on positive
-outcomes here. Its sample record gives the input rows used for estimation.
+The fitted treatment coefficient is about 0.325. Its proportional effect,
+`expm1(0.325)`, is about 0.384. At the same value of `control`, the fitted
+arithmetic mean is **38.4% higher** for the treated group. PPML uses all
+800 observations. The log regression uses the 671 with positive outcomes.
 
 ## 2. Prepare rows and reuse the design
 
-Prepare data once when fitting alternative admitted equations to the
-same formula. The fit applies its mean-order domain and records exclusions
-on the original input-row scale.
+`prepare()` lets you reuse the same formula and data. The next call changes
+the target with `omega = 0.5`. It models the conditional mean of the square
+root of the outcome, then squares that mean for prediction. The working
+variance order `tau` controls how the estimating equation weights observations.
+Use `$sample$positions` to find the original rows each fit used.
 
 ```{r prepared}
 prepared <- prepare(outcome ~ treated + control, data)
@@ -59,8 +64,9 @@ se(half_order)
 
 The panel has exporter-year, importer-year and directed pair fixed
 effects. An agreement takes effect on different dates for different
-pairs. Keep the pair classification separate from the two date
-interactions.
+pairs. In the formula, `exporter^year` gives each exporter its own effect in
+each year. `importer^year` does the same for importers, and `pair` controls
+for differences between trade partners that persist across years.
 
 ```{r gravity}
 gravity <- expand.grid(exporter = seq_len(12L), importer = seq_len(12L),
@@ -78,85 +84,131 @@ cancelled <- fit(formula, gravity, cancel = "pair", tau = 1)
 etable(joint, cancelled, names = c("Joint PPML", "Pair-cancelled PPML"))
 ```
 
-At PPML weighting, pair cancellation gives the profiled joint slope
-equation on the common sample. Cancelling at another working variance
-changes the equation. Use `fixef()` to inspect normalized retained
-effects and recovered group scales. Both models return fitted means
-and response residuals on the retained rows.
+With `tau = 1`, cancelling the pair effects gives the same agreement
+coefficient as joint PPML on the same observations. Cancelling at another
+working variance changes the slope equation. See
+`vignette("gravity", package = "powermean")` for the Gamma example
+and the bias adjustments.
 
-For a fixed-effect counterfactual, keep the original retained row
-labels and supply replacement covariates in fitting order.
-`predict()` holds offsets and recovered fixed effects fixed.
+### Predict trade for the same pairs
+
+What would predicted trade be if every pair had an agreement?
+Change `agreement` on the rows the model used. Keep their row names, order,
+and fixed-effect identifiers. Both predictions use the fitted slopes,
+offsets and recovered fixed effects.
 
 ```{r gravity-prediction}
 retained <- gravity[cancelled$sample$positions, , drop = FALSE]
 with_agreement <- transform(retained, agreement = 1L)
-head(cbind(fitted = predict(cancelled),
+head(fixef(cancelled)$pair)
+head(cbind(observed = retained$trade, fitted = predict(cancelled),
            with_agreement = predict(cancelled, with_agreement),
            residual = residuals(cancelled)))
 ```
 
-See the Three-Way Gravity with Powermean vignette for sample accounting
-and the bias adjustments.
+The first call returns a table with the pair labels and their estimated
+log effects. You can also get all three fixed-effect tables with
+`predict(cancelled, type = "fixed_effects")`. In the second call the residual
+is observed trade minus fitted trade. Pairs that already have an agreement
+keep their fitted trade in the counterfactual.
 
-## 4. Difference out two fixed effects with Jochmans GMM
+## 4. Difference out two fixed effects with GMM1 or GMM2
 
-Jochmans GMM estimates an exogenous exponential mean with two
-fixed-effect blocks. Use a complete rectangular panel with one row per
-cell, two simple identifier columns and at least two levels per block.
-Observed zero outcomes remain in the array. A two-by-two panel has
-only one rectangle and cannot supply usable covariance.
+GMM1 and GMM2 compare four cells at a time. For instance, take two firms
+observed in each of two years. Pair each firm's first observation with the
+other firm's second observation. Each of the two resulting products contains
+both firm effects and both year effects. Jochmans (2017) uses this symmetry
+to remove the fixed effects from the slope equation.
+[Two-Way Models for Gravity, §§I–III](https://doi.org/10.1162/REST_a_00620)
+
+### What do the two-way moments assume?
+
+Let $U_{ij}=Y_{ij}/\mu_{ij}$, where $\mu_{ij}$ is the exponential mean
+including both fixed effects. Condition on the full regressor array and
+all fixed effects, denoted by $\mathcal C$. The mean model gives
+$E[U_{ij}\mid\mathcal C]=1$ in each cell. The two-way difference also uses
+an assumption about the two diagonals of each rectangle,
+
+$$
+E[U_{ij}U_{k\ell}\mid\mathcal C]
+  = E[U_{i\ell}U_{kj}\mid\mathcal C].
+$$
+
+This is an extra restriction. A shock shared by the two cells on just one
+diagonal can change their expected product even when each cell still has
+mean one. Under the conditions in Jochmans (2017), both expected products
+equal one. The standard errors reported here assume conditionally independent
+cell errors and that both dimensions grow.
+
+The distinction matters when choosing weights. In a joint PML fit with
+`omega = 1`, working variance $V(\mu)=\mu^\tau$ gives each relative residual
+$Y/\mu-1$ weight $\mu^{2-\tau}$ in the slope equation. PPML weights it by
+$\mu$ and Gamma PML gives it unit weight. These scores use the conditional
+mean of one cell at a time. GMM1 and GMM2 weight the four-cell difference
+differently, so their slopes can differ in a given sample. Both rely on
+the same cross-product restriction.
+[Benatia et al. (2026), §3.2](https://arxiv.org/abs/2203.11820v4)
+
+### Fit a complete panel
+
+The rectangular layout works for firms observed in every year. Supply one
+row per firm and year, including observed zeros. Each dimension needs two
+or more levels, and a single two-by-two rectangle gives too little
+information for standard errors.
 
 ```{r gmm-rectangular}
-panel <- expand.grid(origin = 1:5, destination = 1:6)
+panel <- expand.grid(firm = 1:5, year = 1:6)
 cell <- seq_len(nrow(panel))
-panel$agreement <- sin(cell)
-panel$trade <- exp(0.2 * panel$agreement + panel$origin / 8 -
-    panel$destination / 9) * (1 + 0.15 * cos(1.3 * cell))
+panel$log_price <- sin(cell)
+panel$sales <- exp(-0.2 * panel$log_price + panel$firm / 8 -
+    panel$year / 9) * (1 + 0.15 * cos(1.3 * cell))
 
-two_way <- trade ~ 0 + agreement | origin + destination
-gmm1 <- fit(two_way, panel, estimator = "gmm1")
-gmm2 <- fit(two_way, panel, estimator = "gmm2", start = coef(gmm1))
-etable(gmm1, gmm2, uncertainty = "ci")
+sales_formula <- sales ~ 0 + log_price | firm + year
+gmm1 <- fit(sales_formula, panel, estimator = "gmm1")
+gmm2 <- fit(sales_formula, panel, estimator = "gmm2", start = coef(gmm1))
+cbind(GMM1 = coef(gmm1), GMM2 = coef(gmm2))
+confint(gmm2)
 ```
 
-GMM1 and GMM2 use different moment equations. GMM1 can supply a
-starting value for GMM2 in the same coefficient order. Both report a
-certified local solution with cell-projection covariance and normal
-intervals. Conditional on the full regressor array and fixed effects,
-the moments require unit means and unit expected products for the
-multiplicative errors at opposite cells of each rectangle. The reported
-inference assumes conditional independence of observed cells and
-growth in both dimensions.
+The estimated price elasticities are about −0.207 for GMM1 and −0.208 for
+GMM2. Holding firm and year effects fixed, a 1% higher price corresponds
+to about 0.21% lower expected sales. The second call uses the GMM1 slope as
+a starting value. Each fit checks its own local solution.
 
-For a directed cross-section, supply every ordered non-self link
-among at least four agents and use the same labels in both identifier
-columns. Select `fe_layout = "directed"`.
+### Fit directed pairs
+
+For trade between countries in a single year, include every ordered pair
+of distinct countries. This layout needs at least four countries and the
+same country labels in the origin and destination columns.
 
 ```{r gmm-directed}
 dyads <- expand.grid(origin = 1:6, destination = 1:6)
 dyads <- dyads[dyads$origin != dyads$destination, ]
 cell <- seq_len(nrow(dyads))
-dyads$agreement <- sin(cell)
-dyads$trade <- exp(0.2 * dyads$agreement + dyads$origin / 8 -
+dyads$log_cost <- sin(cell)
+dyads$trade <- exp(-0.2 * dyads$log_cost + dyads$origin / 8 -
     dyads$destination / 9) * (1 + 0.15 * cos(1.3 * cell))
 
-directed <- fit(two_way, dyads, estimator = "gmm2", fe_layout = "directed")
+directed <- fit(trade ~ 0 + log_cost | origin + destination, dyads,
+                estimator = "gmm2", fe_layout = "directed")
 stata <- with_vcov(directed, "stata")
 cbind(paper = se(directed), stata = se(stata))
 head(cbind(fitted = predict(directed), residual = residuals(directed)))
 ```
 
-The paper covariance is the default. The Stata view applies
-`(n - 1) / n` to the directed covariance for `n` agents and leaves the
-slopes at the fitted point. Prediction recovers the two sets of fixed
-effects with the GMM slopes held fixed. Use `fixef()` to inspect them.
+The default standard errors use the cell projections in Jochmans (2017).
+To match Stata's `twgravity` convention, `with_vcov(directed, "stata")`
+multiplies the covariance by `(n - 1) / n` for `n` countries. The slope
+stays the same. For `predict(directed)`, Powermean holds that slope fixed
+and recovers origin and destination effects by PPML. Fitted trade then
+matches the observed totals by origin and by destination. Use
+`fixef(directed)` for the two effect tables.
 
-## 5. Retain inference for another covariance request
+## 5. Compare standard errors
 
-Use a covariance view to change the requested inference while keeping
-the estimated point. Save the result if the same retained rows and
-influences are needed in a later R session.
+To see how a different covariance estimate affects the standard error of
+the original treatment coefficient, use `with_vcov()`. It uses the same
+observations and coefficients as `arithmetic`.
 
 ```{r retained}
 alternative <- with_vcov(arithmetic, "HC3")

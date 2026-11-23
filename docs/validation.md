@@ -1,7 +1,7 @@
 # Validation against Powermean for Python
 
 The R port uses [Python Powermean 0.1.1](https://github.com/dvbn/powermean/releases/tag/v0.1.1)
-for Jochmans GMM, retained-row prediction, and the released numerical
+for GMM1 and GMM2, retained-row prediction, and the released numerical
 repairs. Python 0.1.0 remains the regression reference for earlier routes.
 
 The port audit compared installed R packages on macOS arm64 and Linux

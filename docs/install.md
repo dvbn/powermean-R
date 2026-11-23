@@ -31,8 +31,11 @@ vignette("powermean", package = "powermean")
 vignette("gravity", package = "powermean")
 ```
 
-The source walkthroughs are also available on GitHub.
-[Getting started](../vignettes/powermean.Rmd) · [Three-way gravity](../vignettes/gravity.Rmd)
+You can also read both walkthroughs on GitHub, with their fitted results.
+[Getting started](get-started.md) · [Three-way gravity](gravity.md)
+
+After editing a vignette, run `Rscript docs/build-walkthroughs.R` from the
+repository root to refresh the GitHub copy.
 
 ## Build a source archive locally
 
@@ -51,5 +54,5 @@ build tools match the R version you are running. If the vignettes are
 unavailable after installation, check `rmarkdown::pandoc_available()`
 and reinstall with `build_vignettes = TRUE`.
 
-For fit errors and exclusions, see the [fit help](../man/fit.Rd) and
+For fit errors and exclusions, run `?powermean::fit` or see the
 [estimation sample example](examples.md#compare-estimation-samples).
