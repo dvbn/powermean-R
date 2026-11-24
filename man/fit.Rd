@@ -233,10 +233,19 @@ Observed zeros remain in the sample.
 Write \eqn{U_{ij}=Y_{ij}/\mu_{ij}}, including both fixed effects in the
 mean \eqn{\mu_{ij}}. Condition on the full regressor array and the fixed
 effects. The mean model requires each \eqn{U_{ij}} to have mean one.
-The difference moment also uses equal expected products of the errors
-at opposite corners of a rectangle. The cell means alone do not imply this
-restriction. Jochmans (2017) obtains an expected product of one on each
-diagonal. Identification also requires covariate variation within rectangles.
+The two-way comparison also requires equal conditional covariances on the
+two diagonals of each rectangle. For example, a retailer may sell more
+than expected one year and order more from its supplier the next. If
+shocks travel more strongly in this direction than in reverse, the
+restriction can fail even when prices are exogenous. If the imbalance
+lines up with relative price changes across firms, it can distort the
+estimated price elasticity. PPML and Gamma PML use each observation's
+own residual, so the same dependence can leave their mean equations
+valid while affecting their standard errors.
+
+Jochmans (2017) derives the difference moment with a conditional expected
+error product of one on each diagonal. Identification also requires
+covariate variation within rectangles.
 
 GMM1 and GMM2 weight the rectangle differences differently. The reported
 standard errors use cell projections and assume conditionally independent
