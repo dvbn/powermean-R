@@ -233,15 +233,27 @@ Observed zeros remain in the sample.
 Write \eqn{U_{ij}=Y_{ij}/\mu_{ij}}, including both fixed effects in the
 mean \eqn{\mu_{ij}}. Condition on the full regressor array and the fixed
 effects. The mean model requires each \eqn{U_{ij}} to have mean one.
-The two-way comparison also requires equal conditional covariances on the
-two diagonals of each rectangle. For example, a retailer may sell more
-than expected one year and order more from its supplier the next. If
-shocks travel more strongly in this direction than in reverse, the
-restriction can fail even when prices are exogenous. If the imbalance
-lines up with relative price changes across firms, it can distort the
-estimated price elasticity. PPML and Gamma PML use each observation's
-own residual, so the same dependence can leave their mean equations
-valid while affecting their standard errors.
+For two firms observed in two years, pair each firm's first year with the
+other firm's second year. The two-way comparison requires the same
+conditional covariance of the relative sales deviations in both pairings.
+
+\itemize{
+\item \strong{When it holds.} If the two firms' demand shocks are
+conditionally independent across firms, both covariances are zero. A
+shock can still persist within a firm. Equal nonzero covariances also
+satisfy the condition.
+\item \strong{When it fails.} A retailer restocks after an unexpectedly
+good year, raising its supplier's sales the following year. Suppose the
+supplier's sales this year are unrelated to the retailer's sales next
+year, given the covariates and fixed effects. The first covariance is
+positive and the second is zero.
+}
+
+If the covariance difference lines up with relative price changes across
+firms, it can distort the GMM price elasticity even with exogenous prices.
+PPML and Gamma PML use each observation's own residual, so the same
+dependence can leave their mean equations valid while affecting their
+standard errors.
 
 Jochmans (2017) derives the difference moment with a conditional expected
 error product of one on each diagonal. Identification also requires
