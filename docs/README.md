@@ -1,13 +1,14 @@
 # Powermean for R user guide
 
-If this is your first fit, [install the package](install.md) and run the [patent example](../README.md#a-first-fit). It takes you from a data frame to a percentage change and two predictions. The walkthroughs below include the R code and its output.
+Start with the [first fit](../README.md#a-first-fit), then follow the same three worked examples as in the Python guide: a conditional mean, three-way gravity, and nonlinear difference-in-differences. Use the chapters below to prepare data, choose a model and report the results. [Function index](reference.md)
 
-## Start with an ordinary regression
+## Get started
 
-1. [Choose the mean and fit a model](get-started.md#1-fit-ordinary-power-means). Estimate a treatment coefficient with PPML or fit log OLS on positive outcomes.
-2. [Prepare your formula and sample](data-and-results.md#specify-the-rate-and-the-sample). Include an interaction, specify exposure or an offset, use observation weights where supported, and prepare one design for several fits.
-3. [Describe the data](data-and-results.md#describe-the-observations-you-actually-fitted). Summarize the outcome, check balance and compare group means on the retained rows.
-4. [Compare working variances](examples.md#one-conditional-mean-three-working-variances) at the same mean order, then [check which rows each fit used](examples.md#compare-estimation-samples) if you change orders.
+- [Install Powermean](install.md) from GitHub or a local distribution.
+- [Three worked examples](quick-tour.md): fit a conditional mean, compare joint and cancelled gravity models, and estimate effects under staggered adoption.
+- [Fit one mean three ways](examples.md#one-conditional-mean-three-working-variances), then [choose a power mean or fit log OLS](get-started.md#1-fit-ordinary-power-means).
+- [Prepare your data and formula](data-and-results.md#specify-the-rate-and-the-sample). Specify regressors and interactions, restrict the sample, and account for exposure, offsets or observation weights.
+- [Compare estimation samples](examples.md#compare-estimation-samples). Find which input rows each fit used and why rows were excluded.
 
 ## Read and report results
 
@@ -15,20 +16,24 @@ If this is your first fit, [install the package](install.md) and run the [patent
 - [Interpret an interaction](data-and-results.md#interpret-an-interaction-at-a-stated-price). Compare two covariate profiles at the same price and exposure. Use [effects, contrasts and tests](reference.md#predictions-effects-and-tests) for other comparisons.
 - [Choose standard errors](reference.md#covariance-and-standard-errors) and [compare two covariance estimates](get-started.md#5-compare-standard-errors) for the same coefficients.
 - [Export a table or save a fit](examples.md#reuse-and-export-a-fit). `effect()` reports a proportion. `etable(..., scale = "effect")` displays a percentage.
+- [Describe the data](data-and-results.md#describe-the-observations-you-actually-fitted). Summarize the outcome, check balance and compare group means on the retained rows.
 
-## Add fixed effects
+## Fixed effects
 
-Write the groups after a vertical bar, as in `sales ~ price | firm + year`. [Choose joint estimation or cancel a block](reference.md#fixed-effects-and-panels). After fitting, [retrieve the effects by level and change covariates on the retained rows](get-started.md#predict-trade-for-the-same-pairs).
+- [Estimate fixed effects jointly](reference.md#fixed-effects-and-panels). Write the groups after a vertical bar, as in `sales ~ price | firm + year`.
+- [Cancel a fixed-effect block](gravity.md#cancel-the-pair-effects). After fitting, [retrieve the effects by level and change covariates on the retained rows](get-started.md#predict-trade-for-the-same-pairs).
 
 ## Panel designs and applications
 
 | Question | Worked analysis |
 | --- | --- |
-| How did a policy change visits across adoption cohorts? | [Nonlinear difference-in-differences](examples.md#nonlinear-difference-in-differences), including effects by cohort and period and changes in visits per clinic. |
 | How does an agreement change expected trade? | [Three-way gravity](gravity.md), including separated pairs, cancellation and the coefficient and covariance adjustments of Weidner and Zylkin (2021). |
+| How did a policy change visits across adoption cohorts? | [Nonlinear difference-in-differences](examples.md#nonlinear-difference-in-differences), including effects by cohort and period and changes in visits per clinic. |
 | Can I difference out two fixed effects in a complete array? | [Assumptions for GMM1 and GMM2](get-started.md#what-do-the-two-way-moments-assume), followed by [a complete panel](get-started.md#fit-a-complete-panel) and [directed pairs](get-started.md#fit-directed-pairs). |
 
-## Function index
+## Reference and help
+
+<a id="function-index"></a>
 
 The [complete R function and option reference](reference.md) covers public functions, result methods, numerical controls and simulation tools. The calls below are the ones most analyses use. Type `help(package = "powermean")` for the installed help.
 
